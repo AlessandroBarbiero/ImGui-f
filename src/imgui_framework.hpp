@@ -20,6 +20,9 @@
 #include <vulkan/vulkan.h>
 //#include <vulkan/vulkan_beta.h>
 
+#include <functional>
+#include <string>
+
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
 // To link with VS2010-era libraries, VS2015+ requires linking with legacy_stdio_definitions.lib, which we do using this pragma.
 // Your own project should not be affected, as you are likely to link with a newer binary of GLFW that is adequate for your version of Visual Studio.
@@ -390,8 +393,9 @@ static void FramePresent(ImGui_ImplVulkanH_Window* wd)
 namespace ImGUI_f{
 
     static GLFWwindow* window;
+    static ImGui_ImplVulkanH_Window* wd;
 
-    void init(int width, int height, string window_name){
+    int init(int width, int height, const char* window_name){
         glfwSetErrorCallback(glfw_error_callback);
         if (!glfwInit())
             return 1;
@@ -420,7 +424,7 @@ namespace ImGUI_f{
         // Create Framebuffers
         int w, h;
         glfwGetFramebufferSize(window, &w, &h);
-        ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
+        wd = &g_MainWindowData;
         SetupVulkanWindow(wd, surface, w, h);
 
         // Setup Dear ImGui context
@@ -463,6 +467,8 @@ namespace ImGUI_f{
         init_info.Allocator = g_Allocator;
         init_info.CheckVkResultFn = check_vk_result;
         ImGui_ImplVulkan_Init(&init_info, wd->RenderPass);
+
+        return 0;
 
     }
 
@@ -513,6 +519,7 @@ namespace ImGUI_f{
 
     void run(std::function<void()> update_callback){
         ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
 
         // Main loop
         while (!glfwWindowShouldClose(window))

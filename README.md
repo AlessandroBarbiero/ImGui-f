@@ -1,8 +1,14 @@
-## Dear ImGUI framework
+# Dear ImGUI framework
 Easy ready-to-go framework to implement a Dear ImGUI application that uses Vulkan + GLFW as backend.
 
-# How to run
-To run a new application simply include imgui_framework.hpp and then call
+## How to run
+To run a new application simply include imgui_framework.hpp 
+
+```c++
+#include "imgui_framework.hpp"
+```
+
+and then call
 
 ```c++
 ImGUI_f::init(width, height, "window_name");
@@ -16,6 +22,6 @@ ImGUI_f::uploadFonts();
 ImGUI_f::run(&update_function);
 ```
 
-The callback function will be called at each frame, place here the Dear ImGUI commands to display what you want.
+The update_function will be called at each frame, place here the Dear ImGUI commands to display what you want.
 
 Build the CMake project from the cmake-gui and run it.
