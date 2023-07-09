@@ -394,6 +394,7 @@ namespace ImGUI_f{
 
     static GLFWwindow* window;
     static ImGui_ImplVulkanH_Window* wd;
+    static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     int init(int width, int height, const char* window_name){
         glfwSetErrorCallback(glfw_error_callback);
@@ -517,69 +518,55 @@ namespace ImGUI_f{
         ImGui_ImplVulkan_DestroyFontUploadObjects();
     }
 
-    void run(std::function<void()> update_callback){
-        ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-        ImGuiIO& io = ImGui::GetIO(); (void)io;
-
-        // Main loop
-        while (!glfwWindowShouldClose(window))
+    void resizeSwapChain(){
+        // Resize swap chain?
+        if (g_SwapChainRebuild)
         {
-            // Poll and handle events (inputs, window resize, etc.)
-            // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-            // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
-            // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
-            // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-            glfwPollEvents();
-
-            // Resize swap chain?
-            if (g_SwapChainRebuild)
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+            if (width > 0 && height > 0)
             {
-                int width, height;
-                glfwGetFramebufferSize(window, &width, &height);
-                if (width > 0 && height > 0)
-                {
-                    ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
-                    ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, &g_MainWindowData, g_QueueFamily, g_Allocator, width, height, g_MinImageCount);
-                    g_MainWindowData.FrameIndex = 0;
-                    g_SwapChainRebuild = false;
-                }
+                ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
+                ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, &g_MainWindowData, g_QueueFamily, g_Allocator, width, height, g_MinImageCount);
+                g_MainWindowData.FrameIndex = 0;
+                g_SwapChainRebuild = false;
             }
+        }
+    }
 
-            // Start the Dear ImGui frame
-            ImGui_ImplVulkan_NewFrame();
-            ImGui_ImplGlfw_NewFrame();
-            ImGui::NewFrame();
+    void newFrame(){
+        // Start the Dear ImGui frame
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+    }
 
+    void render(){
+        // Rendering
+        ImGui::Render();
+        ImDrawData* main_draw_data = ImGui::GetDrawData();
+        const bool main_is_minimized = (main_draw_data->DisplaySize.x <= 0.0f || main_draw_data->DisplaySize.y <= 0.0f);
+        wd->ClearValue.color.float32[0] = clear_color.x * clear_color.w;
+        wd->ClearValue.color.float32[1] = clear_color.y * clear_color.w;
+        wd->ClearValue.color.float32[2] = clear_color.z * clear_color.w;
+        wd->ClearValue.color.float32[3] = clear_color.w;
+        if (!main_is_minimized)
+            FrameRender(wd, main_draw_data);
 
-            //%%%%%%%%%%%
-            //Call the user function
-            //%%%%%%%%%%%
-            update_callback();
-
-
-            // Rendering
-            ImGui::Render();
-            ImDrawData* main_draw_data = ImGui::GetDrawData();
-            const bool main_is_minimized = (main_draw_data->DisplaySize.x <= 0.0f || main_draw_data->DisplaySize.y <= 0.0f);
-            wd->ClearValue.color.float32[0] = clear_color.x * clear_color.w;
-            wd->ClearValue.color.float32[1] = clear_color.y * clear_color.w;
-            wd->ClearValue.color.float32[2] = clear_color.z * clear_color.w;
-            wd->ClearValue.color.float32[3] = clear_color.w;
-            if (!main_is_minimized)
-                FrameRender(wd, main_draw_data);
-
-            // Update and Render additional Platform Windows
-            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-            {
-                ImGui::UpdatePlatformWindows();
-                ImGui::RenderPlatformWindowsDefault();
-            }
-
-            // Present Main Platform Window
-            if (!main_is_minimized)
-                FramePresent(wd);
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        // Update and Render additional Platform Windows
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
         }
 
+        // Present Main Platform Window
+        if (!main_is_minimized)
+            FramePresent(wd);
+    }
+
+    void cleanup(){
         // Cleanup
         VkResult err = vkDeviceWaitIdle(g_Device);
         check_vk_result(err);
@@ -592,6 +579,34 @@ namespace ImGUI_f{
 
         glfwDestroyWindow(window);
         glfwTerminate();
+    }
 
+    void run(std::function<void()> update_callback){
+
+        // Main loop
+        while (!glfwWindowShouldClose(window))
+        {
+            // Poll and handle events (inputs, window resize, etc.)
+            // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+            // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
+            // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
+            // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+            glfwPollEvents();
+
+            resizeSwapChain();
+
+            newFrame();
+
+
+            //%%%%%%%%%%%
+            //Call the user function
+            //%%%%%%%%%%%
+            update_callback();
+
+            render();
+            
+        }
+
+        cleanup();
     }
 }
